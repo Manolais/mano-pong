@@ -1,3 +1,5 @@
+'use strict';
+
 class Player {
   private isMoving: boolean;
   private currentY: number;

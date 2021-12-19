@@ -1,13 +1,13 @@
-"use strict";
+'use strict';
 Object.defineProperty(exports, "__esModule", { value: true });
 class Player {
     constructor(color, isPlayer1 = true, moveVelocity = 20) {
-        this.playerHeight = 150;
-        this.playerWidth = 15;
-        this.currentY = window.innerHeight / 2 - this.playerHeight / 2;
         this.isMoving = false;
-        this.intervalId = 0;
+        this.playerWidth = 15;
+        this.playerHeight = 150;
+        this.currentY = window.innerHeight / 2 - this.playerHeight / 2;
         this.keyPress = '';
+        this.intervalId = 0;
         this.playerColor = color;
         this.isPlayer1 = isPlayer1;
         this.moveVelocity = moveVelocity;

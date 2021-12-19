@@ -1,3 +1,5 @@
+'use strict';
+
 class Ball {
   object: HTMLElement;
   color: string;
