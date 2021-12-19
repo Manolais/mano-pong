@@ -5,6 +5,9 @@
   padding: 0;
   box-sizing: border-box;
   font-family: 'Major Mono Display', monospace;
+}
+
+body {
   --player-width: 15px;
   --player-height: 150px;
 }
@@ -12,21 +15,5 @@
 .root {
   width: 100vw;
   height: 100vh;
-}
-
-/* center a div */
-
-.player1 {
-  /* position: absolute; */
-  /* width: var(--player-width);
-  height: var(--player-height); */
-  left: 20%;
-  /* transform: translate(-50%, -50%); */
-}
-
-.player2 {
-
-  right: 20%;
-
 }
 

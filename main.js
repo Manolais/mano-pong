@@ -1,11 +1,16 @@
 'use strict';
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const player_1 = __importDefault(require("./player"));
 class Pong {
-    constructor(moveVelocity = 5, startGame = true, bgColor = 'black') {
+    constructor(moveVelocity = 20, startGame = true, bgColor = 'black') {
         // const initialY = window.innerHeight / 2
         this.moveVelocity = moveVelocity;
-        this.player1 = new Player('white', true, moveVelocity); // color red, and is player 1
-        this.player2 = new Player('white', false, moveVelocity); // color black, and is not player 1 so it will be player 2
-        this.ball = new Ball('#0095DD');
+        this.player1 = new player_1.default('white', true, moveVelocity); // color red, and is player 1
+        this.player2 = new player_1.default('white', false, moveVelocity); // color black, and is not player 1 so it will be player 2
+        this.ball = new Ball('white');
         this.root = document.querySelector('.root');
         console.log(this.root);
         this.root.style.backgroundColor = bgColor;
@@ -28,6 +33,7 @@ class Pong {
     appendPlayersToRoot() {
         this.root.appendChild(this.player1.getPlayerObject);
         this.root.appendChild(this.player2.getPlayerObject);
+        this.root.appendChild(this.ball.getBallObject);
     }
     useKeyboard(player) {
         document.addEventListener('keydown', e => {
@@ -46,106 +52,49 @@ class Pong {
         console.log('play');
         this.player1.move();
         this.player2.move();
-    }
-}
-class Player {
-    constructor(color, isPlayer1 = true, moveVelocity = 5) {
-        this.playerHeight = 150;
-        this.playerWidth = 15;
-        this.currentY = window.innerHeight / 2 - this.playerHeight / 2;
-        this.isMoving = false;
-        this.intervalId = 0;
-        this.keyPress = '';
-        this.playerColor = color;
-        this.isPlayer1 = isPlayer1;
-        this.moveVelocity = moveVelocity;
-        this.object = document.createElement('div');
-        this.initPlayerObject();
-    }
-    get getPlayerObject() {
-        return this.object;
-    }
-    set setPlayerObject(object) {
-        this.object = object;
-        this.initPlayerObject();
-    }
-    initPlayerObject() {
-        this.object.style.top = this.currentY + 'px';
-        this.object.style.height = this.playerHeight + 'px';
-        this.object.style.width = this.playerWidth + 'px';
-        this.object.style.backgroundColor = this.playerColor;
-        this.object.style.position = 'absolute';
-        this.isPlayer1 ? (this.object.style.left = '20%') : (this.object.style.right = '20%');
-    }
-    set setColor(color) {
-        this.playerColor = color;
-        this.object.style.backgroundColor = this.playerColor;
-    }
-    set setPosition(position) {
-        this.currentY = parseFloat(position);
-        this.object.style.top = position;
-    }
-    followMouse(event) {
-        let position = event.clientY - this.playerHeight / 2;
-        if (position > window.innerHeight - this.playerHeight) {
-            position = window.innerHeight - this.playerHeight;
-        }
-        else if (position < 0) {
-            position = 0;
-        }
-        this.setPosition = position + 'px';
-    }
-    moveUp(position) {
-        let newPosition = this.currentY - position + 'px';
-        if (this.currentY - position < 0) {
-            newPosition = '0px';
-        }
-        ;
-        this.setPosition = newPosition;
-    }
-    moveDown(position) {
-        let newPosition = this.currentY + position + 'px';
-        if (this.currentY + position > window.innerHeight - this.playerHeight) {
-            newPosition = window.innerHeight - this.playerHeight + 'px';
-        }
-        ;
-        this.setPosition = newPosition;
-    }
-    stopMoving(event) {
-        const keyUp = this.isPlayer1 ? 'w' : 'ArrowUp';
-        const keyDown = this.isPlayer1 ? 's' : 'ArrowDown';
-        if (event.key === keyUp || event.key === keyDown) {
-            this.isMoving = false;
-            // clearInterval(this.intervalId);
-        }
-        // this.isMoving = false
-    }
-    startMoving(event) {
-        if (event instanceof MouseEvent) {
-            this.followMouse(event);
-            return;
-        }
-        this.isMoving = true;
-        this.keyPress = event.key;
-    }
-    move() {
-        const keyUp = this.isPlayer1 ? 'w' : 'ArrowUp';
-        const keyDown = this.isPlayer1 ? 's' : 'ArrowDown';
-        this.intervalId = setInterval(() => {
-            if (this.isMoving) {
-                if (this.keyPress === keyUp) {
-                    this.moveUp(this.moveVelocity);
-                }
-                else if (this.keyPress === keyDown) {
-                    this.moveDown(this.moveVelocity);
-                }
-            }
-        }, 1000 / 60);
+        this.ball.move();
     }
 }
 class Ball {
-    constructor(color) {
+    constructor(color, objectVelocity = 5) {
         this.color = color;
+        this.objectVelocity = objectVelocity;
+        this.currentX = window.innerWidth / 2;
+        this.currentY = window.innerHeight / 2;
+        this.intervalId = 0;
+        this.object = document.createElement('div');
+        this.initBallObject();
+    }
+    initBallObject() {
+        this.object.style.width = '15px';
+        this.object.style.height = '15px';
+        this.object.style.backgroundColor = this.color;
+        this.object.style.position = 'absolute';
+        this.object.style.left = this.currentX + 'px';
+        this.object.style.top = this.currentY + 'px';
+        this.object.style.transform = 'translate(-50%, -50%)';
+        this.object.style.borderRadius = '50%';
+    }
+    get getBallObject() {
+        return this.object;
+    }
+    set setPostion({ x, y }) {
+        this.currentX = parseFloat(x);
+        this.currentY = parseFloat(y);
+        this.object.style.left = x;
+        this.object.style.top = y;
+    }
+    moveUp() { }
+    moveDown() {
+        this.currentY += this.objectVelocity;
+        this.object.style.top = this.currentY + 'px';
+    }
+    move() {
+        this.intervalId = setInterval(() => {
+            this.currentX += -this.objectVelocity;
+            this.currentY += this.objectVelocity;
+            this.setPostion = { x: this.currentX + 'px', y: this.currentY + 'px' };
+        }, 1000 / 60);
     }
 }
-const pong = new Pong(20);
+const pong = new Pong();
