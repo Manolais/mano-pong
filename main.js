@@ -31,6 +31,7 @@ class Pong {
     }
     keyPressed() {
         this.useMouse(this.player1);
+        this.useMouse(this.player2);
         this.useKeyboard(this.player1);
         this.useKeyboard(this.player2);
     }
