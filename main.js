@@ -4,12 +4,9 @@
 class Pong {
     constructor(moveVelocity = 20, startGame = true, bgColor = 'black') {
         this.moveVelocity = moveVelocity;
-        this.player1 = new Player('white', true, moveVelocity); // color red, and is player 1
-        this.player2 = new Player('white', false, moveVelocity); // color black, and is not player 1 so it will be player 2
-        this.ball = new Ball('white');
-        this.ball2 = new Ball('white');
-        this.ball3 = new Ball('white');
-        this.ball4 = new Ball('white');
+        this.player1 = new Player(this, 'white', true, moveVelocity); // color red, and is player 1
+        this.player2 = new Player(this, 'white', false, moveVelocity); // color black, and is not player 1 so it will be player 2
+        this.ball = new Ball(this, 'white');
         this.root = document.querySelector('.root');
         this.root.style.backgroundColor = bgColor;
         this.initRootObject();
@@ -22,24 +19,34 @@ class Pong {
     }
     startGame() {
         this.keyPressed();
-        this.appendToRoot();
+        this.appendToRoot([this.player1, this.player2, this.ball]);
         this.play();
+    }
+    play() {
+        this.player1.move();
+        this.player2.move();
+        this.detectPlayerCollision(this.player1);
+        this.detectPlayerCollision(this.player2);
+        this.ball.startMoving();
+    }
+    keyPressed() {
+        this.useMouse(this.player1);
+        this.useKeyboard(this.player1);
+        this.useKeyboard(this.player2);
+    }
+    appendToRoot(childs) {
+        childs.forEach(child => {
+            if (child instanceof Player) {
+                this.root.appendChild(child.getPlayerObject);
+            }
+            else {
+                this.root.appendChild(child.getBallObject);
+            }
+        });
     }
     initRootObject() {
         this.root.style.width = '100vw';
         this.root.style.height = '100vh';
-    }
-    keyPressed() {
-        this.useMouse(this.player1);
-        this.useKeyboard(this.player2);
-    }
-    appendToRoot() {
-        this.root.appendChild(this.player1.getPlayerObject);
-        this.root.appendChild(this.player2.getPlayerObject);
-        this.root.appendChild(this.ball.getBallObject);
-        // this.root.appendChild(this.ball2.getBallObject);
-        // this.root.appendChild(this.ball3.getBallObject);
-        // this.root.appendChild(this.ball4.getBallObject);
     }
     useKeyboard(player) {
         document.addEventListener('keydown', e => {
@@ -54,26 +61,34 @@ class Pong {
             player.startMoving(e);
         });
     }
-    play() {
-        this.player1.move();
-        this.player2.move();
-        this.ball.startMoving();
-        // this.ball.move('up');
-        // this.ball.move('left');
-        // this.ball.move('down');
-        // this.ball2.move('down');
-        // this.ball3.move('left');
-        // this.ball4.move('right');
+    loss() {
+        clearInterval(this.ball.intervalId);
+        const player = this.ball.currentX < window.innerWidth / 2 ? '2' : '1';
+        confirm(`Player ${player} wins, Try again?`);
+    }
+    detectPlayerCollision(player) {
+        setInterval(() => {
+            const playerPosition = player.getPlayerObject.getBoundingClientRect();
+            if (this.ball.currentX + this.ball.center >= playerPosition.left &&
+                this.ball.currentX - this.ball.center <= playerPosition.right) {
+                if (this.ball.currentY >= playerPosition.top &&
+                    this.ball.currentY <= playerPosition.bottom) {
+                    this.ball.reverseDirectionX();
+                    // this.reverseDirectionY();
+                }
+            }
+        }, 1000 / 60);
     }
 }
 class Player {
-    constructor(color, isPlayer1 = true, moveVelocity = 20) {
+    constructor(parent, color, isPlayer1 = true, moveVelocity = 20) {
         this.isMoving = false;
         this.playerWidth = 15;
         this.playerHeight = 150;
         this.currentY = window.innerHeight / 2 - this.playerHeight / 2;
         this.keyPress = '';
         this.intervalId = 0;
+        this.parent = parent;
         this.playerColor = color;
         this.isPlayer1 = isPlayer1;
         this.moveVelocity = moveVelocity;
@@ -101,8 +116,8 @@ class Player {
         this.object.style.width = this.playerWidth + 'px';
         this.object.style.backgroundColor = this.playerColor;
         this.object.style.position = 'absolute';
-        const lftoright = this.isPlayer1 ? 'left' : 'right';
-        this.object.style[lftoright] = '20%';
+        const prop = this.isPlayer1 ? 'left' : 'right';
+        this.object.style[prop] = '20%';
     }
     followMouse(event) {
         let position = event.clientY - this.playerHeight / 2;
@@ -137,6 +152,7 @@ class Player {
     }
     startMoving(event) {
         if (event instanceof MouseEvent) {
+            // console.log(this.object.getBoundingClientRect());
             this.followMouse(event);
             return;
         }
@@ -167,11 +183,12 @@ class Player {
     }
 }
 class Ball {
-    constructor(color, moveVelocity = 5) {
+    constructor(parent, color, moveVelocity = 5) {
         this.color = color;
         this.moveVelocity = moveVelocity;
         this.randomVelocityX = moveVelocity;
         this.randomVelocityY = moveVelocity;
+        this.parent = parent;
         this.directionY = '';
         this.directionX = '';
         this.currentX = window.innerWidth / 2;
@@ -195,17 +212,29 @@ class Ball {
     get getBallObject() {
         return this.object;
     }
-    set setPostion({ x, y }) {
-        this.currentX = parseFloat(x);
+    set setY(y) {
         this.currentY = parseFloat(y);
-        this.object.style.left = x;
         this.object.style.top = y;
+    }
+    set setX(x) {
+        this.currentX = parseFloat(x);
+        this.object.style.left = x;
+    }
+    set setPostion({ x, y }) {
+        this.setX = x;
+        this.setY = y;
+    }
+    reverseDirectionY() {
+        this.directionY = this.directionY === 'up' ? 'down' : 'up';
+    }
+    reverseDirectionX() {
+        this.directionX = this.directionX === 'left' ? 'right' : 'left';
     }
     moveUp(position) {
         let y = this.currentY - position + 'px';
         const x = this.currentX + 'px';
         if (this.currentY - position - this.center <= 0) {
-            this.directionY = 'down';
+            this.reverseDirectionY();
             return;
         }
         this.setPostion = { x, y };
@@ -214,7 +243,7 @@ class Ball {
         let y = this.currentY + position + 'px';
         const x = this.currentX + 'px';
         if (this.currentY + position + this.center >= window.innerHeight) {
-            this.directionY = 'up';
+            this.reverseDirectionY();
             return;
         }
         this.setPostion = { x, y };
@@ -223,7 +252,7 @@ class Ball {
         let x = this.currentX - position + 'px';
         const y = this.currentY + 'px';
         if (this.currentX - position - this.center <= 0) {
-            this.directionX = 'right';
+            this.parent.loss();
             return;
         }
         this.setPostion = { x, y };
@@ -232,20 +261,19 @@ class Ball {
         let x = this.currentX + position + 'px';
         const y = this.currentY + 'px';
         if (this.currentX + position + this.center >= window.innerWidth) {
-            this.directionX = 'left';
+            this.parent.loss();
             return;
         }
         this.setPostion = { x, y };
     }
     move() {
-        // const randomVelocity = randomNum(this.moveVelocity / 10, this.moveVelocity * 10);
         this.intervalId = setInterval(() => {
             if (this.directionY === 'up')
                 this.moveUp(this.randomVelocityY);
-            if (this.directionY === 'down')
-                this.moveDown(this.randomVelocityY);
             if (this.directionX === 'left')
                 this.moveLeft(this.randomVelocityX);
+            if (this.directionY === 'down')
+                this.moveDown(this.randomVelocityY);
             if (this.directionX === 'right')
                 this.moveRight(this.randomVelocityX);
             this.setPostion = { x: this.currentX + 'px', y: this.currentY + 'px' };
@@ -255,34 +283,38 @@ class Ball {
     detectChangeDirection() {
         let lastDirectionY = '';
         let lastDirectionX = '';
+        const multiplier = 1.5;
         setInterval(() => {
             if (this.directionY !== lastDirectionY) {
-                this.randomVelocityY = randomNum(this.moveVelocity / 1.2, this.moveVelocity * 1.2);
+                this.randomVelocityY = this.randomVelocityY + multiplier;
+                this.randomVelocityY = randomNum(this.moveVelocity, this.moveVelocity * multiplier);
+                // console.log('new y', this.randomVelocityY);
             }
             if (this.directionX !== lastDirectionX) {
-                this.randomVelocityX = randomNum(this.moveVelocity / 1.2, this.moveVelocity * 1.2);
+                // this.randomVelocityX = this.randomVelocityX + multiplier
+                this.randomVelocityX = randomNum(this.moveVelocity, this.moveVelocity * multiplier);
+                // console.log('new x', this.randomVelocityX);
             }
             lastDirectionY = this.directionY;
             lastDirectionX = this.directionX;
         }, 1000 / 60);
     }
     startMoving() {
-        this.directionX = 'right';
-        this.directionY = 'down';
+        const startX = randomNum(0, 1, true) ? 'left' : 'right';
+        const startY = randomNum(0, 1, true) ? 'up' : 'down';
+        console.log(startX, startY);
+        this.directionX = startX;
+        this.directionY = startY;
+        ;
         this.move();
     }
 }
 const pong = new Pong(20, false);
-// const start = confirm('Press OK to start');
-// if (start) {
 pong.startGame();
-// }
-function randomNum(min, max) {
-    return Math.random() * (max - min) + min; // You can remove the Math.floor if you don't want it to be an integer
-}
-// fibo function
-function fibo(n) {
-    if (n <= 1)
-        return n;
-    return fibo(n - 1) + fibo(n - 2);
+function randomNum(min, max, isInt = false) {
+    const result = Math.random() * (max - min) + min;
+    console.log(result);
+    if (isInt)
+        return Math.round(result);
+    return parseFloat(result.toFixed(3));
 }

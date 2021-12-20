@@ -7,9 +7,6 @@ class Pong {
   player1: Player;
   player2: Player;
   ball: Ball;
-  ball2: Ball;
-  ball3: Ball;
-  ball4: Ball;
   root: HTMLElement;
   moveVelocity: number;
   constructor(
@@ -18,12 +15,9 @@ class Pong {
     bgColor: string = 'black'
   ) {
     this.moveVelocity = moveVelocity;
-    this.player1 = new Player('white', true, moveVelocity); // color red, and is player 1
-    this.player2 = new Player('white', false, moveVelocity); // color black, and is not player 1 so it will be player 2
-    this.ball = new Ball('white');
-    this.ball2 = new Ball('white');
-    this.ball3 = new Ball('white');
-    this.ball4 = new Ball('white');
+    this.player1 = new Player(this, 'white', true, moveVelocity); // color red, and is player 1
+    this.player2 = new Player(this, 'white', false, moveVelocity); // color black, and is not player 1 so it will be player 2
+    this.ball = new Ball(this, 'white');
 
     this.root = document.querySelector('.root') as HTMLDivElement;
     this.root.style.backgroundColor = bgColor;
@@ -39,30 +33,40 @@ class Pong {
 
   startGame() {
     this.keyPressed();
-    this.appendToRoot();
+    this.appendToRoot([this.player1, this.player2, this.ball]);
     this.play();
   }
 
-  initRootObject() {
+  play() {
+    this.player1.move();
+    this.player2.move();
+    this.detectPlayerCollision(this.player1);
+    this.detectPlayerCollision(this.player2);
+    this.ball.startMoving();
+  }
+
+  keyPressed(): void {
+    this.useMouse(this.player1);
+    this.useKeyboard(this.player1);
+    this.useKeyboard(this.player2);
+  }
+
+  appendToRoot(childs: (Player | Ball)[]): void {
+    childs.forEach(child => {
+      if (child instanceof Player) {
+        this.root.appendChild(child.getPlayerObject);
+      } else {
+        this.root.appendChild(child.getBallObject);
+      }
+    });
+  }
+
+  initRootObject(): void {
     this.root.style.width = '100vw';
     this.root.style.height = '100vh';
   }
 
-  keyPressed() {
-    this.useMouse(this.player1);
-    this.useKeyboard(this.player2);
-  }
-
-  appendToRoot() {
-    this.root.appendChild(this.player1.getPlayerObject);
-    this.root.appendChild(this.player2.getPlayerObject);
-    this.root.appendChild(this.ball.getBallObject);
-    // this.root.appendChild(this.ball2.getBallObject);
-    // this.root.appendChild(this.ball3.getBallObject);
-    // this.root.appendChild(this.ball4.getBallObject);
-  }
-
-  useKeyboard(player: Player) {
+  useKeyboard(player: Player): void {
     document.addEventListener('keydown', e => {
       player.startMoving(e);
     });
@@ -71,22 +75,34 @@ class Pong {
     });
   }
 
-  useMouse(player: Player) {
+  useMouse(player: Player): void {
     document.addEventListener('mousemove', e => {
       player.startMoving(e);
     });
   }
 
-  play() {
-    this.player1.move();
-    this.player2.move();
-    this.ball.startMoving();
-    // this.ball.move('up');
-    // this.ball.move('left');
-    // this.ball.move('down');
-    // this.ball2.move('down');
-    // this.ball3.move('left');
-    // this.ball4.move('right');
+  loss(): void {
+    clearInterval(this.ball.intervalId);
+    const player = this.ball.currentX < window.innerWidth / 2 ? '2' : '1';
+    confirm(`Player ${player} wins, Try again?`);
+  }
+
+  detectPlayerCollision(player: Player) {
+    setInterval(() => {
+      const playerPosition = player.getPlayerObject.getBoundingClientRect();
+      if (
+        this.ball.currentX + this.ball.center >= playerPosition.left &&
+        this.ball.currentX - this.ball.center <= playerPosition.right
+      ) {
+        if (
+          this.ball.currentY >= playerPosition.top &&
+          this.ball.currentY <= playerPosition.bottom
+        ) {
+          this.ball.reverseDirectionX();
+          // this.reverseDirectionY();
+        }
+      }
+    }, 1000 / 60);
   }
 }
 
@@ -101,9 +117,10 @@ class Player {
   playerHeight: number;
   moveVelocity: number;
   intervalId: number;
-
+  parent: Pong;
 
   constructor(
+    parent: Pong,
     color: string,
     isPlayer1: boolean = true,
     moveVelocity: number = 20
@@ -115,6 +132,7 @@ class Player {
     this.keyPress = '';
     this.intervalId = 0;
 
+    this.parent = parent;
     this.playerColor = color;
     this.isPlayer1 = isPlayer1;
     this.moveVelocity = moveVelocity;
@@ -147,8 +165,8 @@ class Player {
     this.object.style.width = this.playerWidth + 'px';
     this.object.style.backgroundColor = this.playerColor;
     this.object.style.position = 'absolute';
-    const lftoright = this.isPlayer1 ? 'left' : 'right';
-    this.object.style[lftoright] = '20%';
+    const prop = this.isPlayer1 ? 'left' : 'right';
+    this.object.style[prop] = '20%';
   }
 
   followMouse(event: MouseEvent) {
@@ -186,10 +204,11 @@ class Player {
 
   startMoving(event: KeyboardEvent | MouseEvent) {
     if (event instanceof MouseEvent) {
+      // console.log(this.object.getBoundingClientRect());
+
       this.followMouse(event);
       return;
     }
-
     // const keyUp = this.isPlayer1 ? 'w' : 'ArrowUp';
     // const keyDown = this.isPlayer1 ? 's' : 'ArrowDown';
     // if (event.key === keyUp ){
@@ -220,22 +239,24 @@ class Player {
 class Ball {
   object: HTMLElement;
   color: string;
-  currentX: number;
-  currentY: number;
-  intervalId: number;
-  moveVelocity: number;
-  randomVelocityY: number;
-  randomVelocityX: number;
-  size: number;
-  center: number;
   directionY: string;
   directionX: string;
+  currentX: number;
+  currentY: number;
+  randomVelocityY: number;
+  randomVelocityX: number;
+  moveVelocity: number;
+  intervalId: number;
+  size: number;
+  center: number;
+  parent: Pong;
 
-  constructor(color: string, moveVelocity: number = 5) {
+  constructor(parent: Pong, color: string, moveVelocity: number = 5) {
     this.color = color;
     this.moveVelocity = moveVelocity;
     this.randomVelocityX = moveVelocity;
     this.randomVelocityY = moveVelocity;
+    this.parent = parent;
 
     this.directionY = '';
     this.directionX = '';
@@ -263,19 +284,35 @@ class Ball {
     return this.object;
   }
 
-  set setPostion({ x, y }: { x: string; y: string }) {
-    this.currentX = parseFloat(x);
+  set setY(y: string) {
     this.currentY = parseFloat(y);
-    this.object.style.left = x;
     this.object.style.top = y;
+  }
+
+  set setX(x: string) {
+    this.currentX = parseFloat(x);
+    this.object.style.left = x;
+  }
+
+  set setPostion({ x, y }: { x: string; y: string }) {
+    this.setX = x;
+    this.setY = y;
+  }
+
+  reverseDirectionY() {
+    this.directionY = this.directionY === 'up' ? 'down' : 'up';
+  }
+
+  reverseDirectionX() {
+    this.directionX = this.directionX === 'left' ? 'right' : 'left';
   }
 
   moveUp(position: number) {
     let y = this.currentY - position + 'px';
     const x = this.currentX + 'px';
-    if (this.currentY - position - this.center <= 0 ) {
-      this.directionY = 'down';
-      return
+    if (this.currentY - position - this.center <= 0) {
+      this.reverseDirectionY();
+      return;
     }
     this.setPostion = { x, y };
   }
@@ -284,36 +321,37 @@ class Ball {
     let y = this.currentY + position + 'px';
     const x = this.currentX + 'px';
     if (this.currentY + position + this.center >= window.innerHeight) {
-      this.directionY = 'up';
-      return
+      this.reverseDirectionY();
+      return;
     }
     this.setPostion = { x, y };
   }
+
   moveLeft(position: number) {
     let x = this.currentX - position + 'px';
     const y = this.currentY + 'px';
     if (this.currentX - position - this.center <= 0) {
-      this.directionX = 'right';
-      return
+      this.parent.loss();
+      return;
     }
     this.setPostion = { x, y };
   }
+
   moveRight(position: number) {
     let x = this.currentX + position + 'px';
     const y = this.currentY + 'px';
     if (this.currentX + position + this.center >= window.innerWidth) {
-      this.directionX = 'left';
-      return
+      this.parent.loss();
+      return;
     }
     this.setPostion = { x, y };
   }
 
   move() {
-    // const randomVelocity = randomNum(this.moveVelocity / 10, this.moveVelocity * 10);
     this.intervalId = setInterval(() => {
       if (this.directionY === 'up') this.moveUp(this.randomVelocityY);
-      if (this.directionY === 'down') this.moveDown(this.randomVelocityY);
       if (this.directionX === 'left') this.moveLeft(this.randomVelocityX);
+      if (this.directionY === 'down') this.moveDown(this.randomVelocityY);
       if (this.directionX === 'right') this.moveRight(this.randomVelocityX);
       this.setPostion = { x: this.currentX + 'px', y: this.currentY + 'px' };
     }, 1000 / 60);
@@ -321,14 +359,25 @@ class Ball {
   }
 
   detectChangeDirection() {
-    let lastDirectionY = '';
-    let lastDirectionX = '';
+    let lastDirectionY: string = '';
+    let lastDirectionX: string = '';
+    const multiplier: number = 1.5;
     setInterval(() => {
       if (this.directionY !== lastDirectionY) {
-        this.randomVelocityY = randomNum(this.moveVelocity / 1.2, this.moveVelocity * 1.2);
+        this.randomVelocityY = this.randomVelocityY + multiplier
+        this.randomVelocityY = randomNum(
+          this.moveVelocity,
+          this.moveVelocity * multiplier
+        );
+        // console.log('new y', this.randomVelocityY);
       }
       if (this.directionX !== lastDirectionX) {
-        this.randomVelocityX = randomNum(this.moveVelocity / 1.2, this.moveVelocity * 1.2);
+        // this.randomVelocityX = this.randomVelocityX + multiplier
+        this.randomVelocityX = randomNum(
+          this.moveVelocity,
+          this.moveVelocity * multiplier
+        );
+        // console.log('new x', this.randomVelocityX);
       }
       lastDirectionY = this.directionY;
       lastDirectionX = this.directionX;
@@ -336,34 +385,23 @@ class Ball {
   }
 
   startMoving() {
-    this.directionX = 'right';
-    this.directionY = 'down';
+    const startX = randomNum(0,1, true) ? 'left' : 'right';
+    const startY = randomNum(0,1, true) ? 'up' : 'down';
+    console.log(startX, startY);
+
+    this.directionX = startX;
+    this.directionY =  startY;;
     this.move();
   }
 }
 
-
-
-
 const pong = new Pong(20, false);
-// const start = confirm('Press OK to start');
-// if (start) {
-  pong.startGame();
-// }
+pong.startGame();
 
-function randomNum(min: number, max: number) {
-  return Math.random() * (max - min) + min; // You can remove the Math.floor if you don't want it to be an integer
+function randomNum(min: number, max: number, isInt: boolean = false): number {
+  const result = Math.random() * (max - min) + min;
+  console.log(result);
+
+  if (isInt) return Math.round(result);
+  return parseFloat(result.toFixed(3));
 }
-
-// fibo function
-function fibo(n: number): number {
-  if (n <= 1) return n;
-  return fibo(n - 1) + fibo(n - 2);
-}
-
-// capitalize first letter
-// function capitalizeFirstLetter(string: string) {
-//   return string.charAt(0).toUpperCase() + string.slice(1);
-// }
-
-
