@@ -47,8 +47,8 @@ class Pong {
 
   keyPressed(): void {
     this.useMouse(this.player1);
+    this.useKeyboard(this.player1);
     this.useKeyboard(this.player2);
-    // this.useKeyboard(this.player2);
   }
 
   appendToRoot(childs: (Player | Ball)[]): void {
