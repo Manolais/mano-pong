@@ -7,10 +7,21 @@
   font-family: 'Major Mono Display', monospace;
 }
 
+
+
 body {
   --player-width: 15px;
   --player-height: 150px;
+  /* content: "<div class="line"></div>"; */
 }
+
+/* .line {
+  height: 80vh;
+  width: 40px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+} */
 /*
 .root {
   width: 100vw;
